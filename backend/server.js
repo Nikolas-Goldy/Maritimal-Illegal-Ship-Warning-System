@@ -3,12 +3,13 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
 const path = require('path');
+const csv = require('csv-parser');
 
 const app = express();
 const PORT = 5000;
 
-// Middleware
 app.use(bodyParser.json());
 app.use(cors());
 
@@ -24,10 +25,8 @@ db.once('open', () => {
   console.log('Connected to MongoDB');
 });
 
-// User model
 const User = require('/User.js');
 
-// Endpoint to add a user (with password hashing)
 app.post('/add-user', async (req, res) => {
   const { email, username, password } = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -55,7 +54,23 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Start the server
+// Endpoint to read CSV file
+app.get('/read-csv', (req, res) => {
+  const csvFilePath = path.join(__dirname, 'data', 'public-global-fishing-effort-v20231026.csv');
+  const results = [];
+
+  fs.createReadStream(csvFilePath)
+    .pipe(csv())
+    .on('data', (data) => results.push(data))
+    .on('end', () => {
+      res.status(200).json(results);
+    })
+    .on('error', (err) => {
+      console.error('Error reading CSV file:', err);
+      res.status(500).send({ message: 'An error occurred while reading the CSV file' });
+    });
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
